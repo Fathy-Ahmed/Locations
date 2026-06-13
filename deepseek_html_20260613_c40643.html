@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Send Location</title>
+  </head>
+
+  <body>
+    <a href="#" id="locationLink">Click to Send Location</a>
+
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
+    ></script>
+    <script>
+      // Initialize with your Public Key
+      emailjs.init("NVCMR19a2I2K3EGeL");
+
+      // Auto-send location when page loads
+      window.addEventListener("load", function () {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+
+              // Send email
+              emailjs
+                .send("service_ysz75sc", "template_0aez2ve", {
+                  location: `${lat}, ${lng}`,
+                  maps_link: mapsUrl,
+                  timestamp: new Date().toString(),
+                })
+                .then(
+                  function (response) {
+                    alert("Location sent!");
+                  },
+                  function (error) {
+                    alert("Failed to send: " + JSON.stringify(error));
+                  },
+                );
+            },
+            function (error) {
+              alert("Location access denied.");
+            },
+          );
+        } else {
+          alert("Geolocation not supported");
+        }
+      });
+    </script>
+  </body>
+</html>
